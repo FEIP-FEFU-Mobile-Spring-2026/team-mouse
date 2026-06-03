@@ -1,30 +1,35 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:team_mouse/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Catalog page shows products and cart icon', (WidgetTester tester) async {
+    await tester.pumpWidget(const MouseStoreApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
+    expect(find.text('Mouse Store'), findsOneWidget);
+    expect(find.byIcon(Icons.shopping_cart), findsOneWidget);
+    expect(find.byType(ProductCard), findsWidgets);
+  });
+
+  testWidgets('Adding product to cart updates badge', (WidgetTester tester) async {
+    await tester.pumpWidget(const MouseStoreApp());
+
     expect(find.text('1'), findsNothing);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    await tester.tap(find.byIcon(Icons.add_shopping_cart).first);
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
     expect(find.text('1'), findsOneWidget);
+  });
+
+  testWidgets('Category filter shows correct products', (WidgetTester tester) async {
+    await tester.pumpWidget(const MouseStoreApp());
+
+    await tester.tap(find.text('Футболки'));
+    await tester.pump();
+
+    final cards = tester.widgetList<ProductCard>(find.byType(ProductCard));
+    expect(cards.every((c) => c.product.category == 'Футболки'), isTrue);
   });
 }

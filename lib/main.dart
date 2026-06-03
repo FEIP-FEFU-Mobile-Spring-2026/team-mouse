@@ -1,122 +1,288 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MouseStoreApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class Product {
+  final String name;
+  final double price;
+  final String category;
+  final IconData icon;
 
-  // This widget is the root of your application.
+  const Product({
+    required this.name,
+    required this.price,
+    required this.category,
+    required this.icon,
+  });
+}
+
+const List<Product> kProducts = [
+  Product(name: 'Классическая футболка', price: 1299, category: 'Футболки', icon: Icons.dry_cleaning),
+  Product(name: 'Поло', price: 1799, category: 'Футболки', icon: Icons.checkroom),
+  Product(name: 'Джинсы slim fit', price: 3499, category: 'Джинсы', icon: Icons.accessibility_new),
+  Product(name: 'Джинсы mom', price: 3199, category: 'Джинсы', icon: Icons.accessibility),
+  Product(name: 'Худи oversize', price: 2799, category: 'Худи', icon: Icons.sports),
+  Product(name: 'Зип-худи', price: 2999, category: 'Худи', icon: Icons.sports_martial_arts),
+  Product(name: 'Платье летнее', price: 2199, category: 'Платья', icon: Icons.woman),
+  Product(name: 'Платье миди', price: 2999, category: 'Платья', icon: Icons.girl),
+  Product(name: 'Куртка демисезонная', price: 5999, category: 'Верхняя одежда', icon: Icons.umbrella),
+  Product(name: 'Пальто', price: 7499, category: 'Верхняя одежда', icon: Icons.wb_cloudy),
+  Product(name: 'Брюки классические', price: 3199, category: 'Брюки', icon: Icons.man),
+  Product(name: 'Рубашка оксфорд', price: 2999, category: 'Рубашки', icon: Icons.dry),
+];
+
+class MouseStoreApp extends StatelessWidget {
+  const MouseStoreApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Mouse Store',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1A1A2E)),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const CatalogPage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class CatalogPage extends StatefulWidget {
+  const CatalogPage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<CatalogPage> createState() => _CatalogPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _CatalogPageState extends State<CatalogPage> {
+  final List<Product> _cart = [];
+  String _selectedCategory = 'Все';
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  List<String> get _categories {
+    return ['Все', ...kProducts.map((p) => p.category).toSet()];
+  }
+
+  List<Product> get _filteredProducts {
+    if (_selectedCategory == 'Все') return kProducts;
+    return kProducts.where((p) => p.category == _selectedCategory).toList();
+  }
+
+  void _addToCart(Product product) {
+    setState(() => _cart.add(product));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('«${product.name}» добавлен в корзину'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
+        title: const Text('Mouse Store'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => CartPage(cart: List.of(_cart))),
+                ),
+              ),
+              if (_cart.isNotEmpty)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    child: Text(
+                      '${_cart.length}',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: Column(
+        children: [
+          SizedBox(
+            height: 52,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final cat = _categories[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Text(cat),
+                    selected: cat == _selectedCategory,
+                    onSelected: (_) => setState(() => _selectedCategory = cat),
+                  ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.72,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: _filteredProducts.length,
+              itemBuilder: (context, index) {
+                return ProductCard(
+                  product: _filteredProducts[index],
+                  onAddToCart: () => _addToCart(_filteredProducts[index]),
+                );
+              },
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    );
+  }
+}
+
+class ProductCard extends StatelessWidget {
+  final Product product;
+  final VoidCallback onAddToCart;
+
+  const ProductCard({super.key, required this.product, required this.onAddToCart});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
+              color: Colors.grey[200],
+              width: double.infinity,
+              child: Icon(product.icon, size: 64, color: Colors.grey[500]),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${product.price.toInt()} ₽',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: onAddToCart,
+                      child: const Icon(Icons.add_shopping_cart, size: 22),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class CartPage extends StatelessWidget {
+  final List<Product> cart;
+
+  const CartPage({super.key, required this.cart});
+
+  double get _total => cart.fold(0, (sum, p) => sum + p.price);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Корзина (${cart.length})'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
+      body: cart.isEmpty
+          ? const Center(child: Text('Корзина пуста', style: TextStyle(fontSize: 16)))
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: cart.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final p = cart[index];
+                      return ListTile(
+                        leading: CircleAvatar(child: Icon(p.icon, size: 20)),
+                        title: Text(p.name),
+                        subtitle: Text(p.category),
+                        trailing: Text(
+                          '${p.price.toInt()} ₽',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Итого:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        '${_total.toInt()} ₽',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Заказ успешно оформлен!')),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Оформить заказ', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
