@@ -50,4 +50,3 @@ flutter build apk --debug
 ![Скриншот](assets/screenshot.png)
 ---
 
-*Сделано с ❤️ командой Team-Mouse*
