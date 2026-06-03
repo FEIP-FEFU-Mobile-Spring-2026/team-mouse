@@ -6,7 +6,7 @@
 ---
 
 ##  Выбранный стек и платформа
-*   Kotlin / Dart
+*   Dart / Flutter
 *   Android studio
 *   
  ---
