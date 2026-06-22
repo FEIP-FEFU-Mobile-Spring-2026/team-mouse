@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/category.dart';
 import '../viewmodel/catalog_viewmodel.dart';
+import '../widgets/product_detail_sheet.dart';
 import '../widgets/product_list_tile.dart';
 import '../widgets/skeleton_tile.dart';
 
@@ -118,7 +119,11 @@ class CatalogScreen extends StatelessWidget {
           itemCount: products.length,
           separatorBuilder: (_, _) =>
               const Divider(height: 1, indent: 16, endIndent: 16),
-          itemBuilder: (_, i) => ProductListTile(product: products[i]),
+          itemBuilder: (_, i) => GestureDetector(
+            onTap: () => showProductDetailSheet(context, products[i]),
+            behavior: HitTestBehavior.opaque,
+            child: ProductListTile(product: products[i]),
+          ),
         );
     }
   }
