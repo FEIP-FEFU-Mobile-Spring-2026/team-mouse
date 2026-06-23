@@ -57,7 +57,7 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CatalogViewModel>().init();
-      context.read<CartViewModel>().loadFromPrefs();
+      context.read<CartViewModel>().loadFromDb();
     });
   }
 

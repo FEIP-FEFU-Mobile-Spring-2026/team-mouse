@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../utils/price_formatter.dart';
 import '../viewmodel/cart_viewmodel.dart';
+import 'product_detail_sheet.dart';
 
 class ProductListTile extends StatelessWidget {
   final Product product;
@@ -11,7 +12,8 @@ class ProductListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final quantity = context.watch<CartViewModel>().getQuantity(product.id);
+    final quantity =
+        context.watch<CartViewModel>().quantityOfProduct(product.id);
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Padding(
@@ -47,18 +49,19 @@ class ProductListTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 10),
-                quantity == 0
-                    ? _PriceBadge(
-                        label: formatPrice(product.priceInKopecks),
-                        color: primaryColor,
-                        onTap: () => context.read<CartViewModel>().increment(product.id),
-                      )
-                    : _QuantityCounter(
-                        quantity: quantity,
-                        color: primaryColor,
-                        onDecrement: () => context.read<CartViewModel>().decrement(product.id),
-                        onIncrement: () => context.read<CartViewModel>().increment(product.id),
-                      ),
+                Row(
+                  children: [
+                    _PriceBadge(
+                      label: formatPrice(product.priceInKopecks),
+                      color: primaryColor,
+                      onTap: () => showProductDetailSheet(context, product),
+                    ),
+                    if (quantity > 0) ...[
+                      const SizedBox(width: 10),
+                      _InCartBadge(quantity: quantity, color: primaryColor),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -142,65 +145,34 @@ class _PriceBadge extends StatelessWidget {
   }
 }
 
-class _QuantityCounter extends StatelessWidget {
+class _InCartBadge extends StatelessWidget {
   final int quantity;
   final Color color;
-  final VoidCallback onDecrement;
-  final VoidCallback onIncrement;
 
-  const _QuantityCounter({
-    required this.quantity,
-    required this.color,
-    required this.onDecrement,
-    required this.onIncrement,
-  });
+  const _InCartBadge({required this.quantity, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _CircleButton(icon: Icons.remove, color: color, onTap: onDecrement),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Text(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.shopping_bag_outlined, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
             '$quantity',
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               color: color,
             ),
           ),
-        ),
-        _CircleButton(icon: Icons.add, color: color, onTap: onIncrement),
-      ],
-    );
-  }
-}
-
-class _CircleButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _CircleButton({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 30,
-        height: 30,
-        decoration: BoxDecoration(
-          border: Border.all(color: color, width: 1.5),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 16, color: color),
+        ],
       ),
     );
   }
