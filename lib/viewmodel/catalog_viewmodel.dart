@@ -17,6 +17,7 @@ class CatalogViewModel extends ChangeNotifier {
   String _selectedCategoryId = _kNewId;
   CatalogStatus _status = CatalogStatus.loading;
   String _errorMessage = '';
+  bool _isOffline = false;
 
   CatalogViewModel(this._repository);
 
@@ -24,6 +25,9 @@ class CatalogViewModel extends ChangeNotifier {
   CatalogStatus get status => _status;
   String get errorMessage => _errorMessage;
   String get selectedCategoryId => _selectedCategoryId;
+
+  /// true, когда показываются закэшированные данные из-за отсутствия сети.
+  bool get isOffline => _isOffline;
 
   List<Category> get tabs {
     return [
@@ -46,25 +50,53 @@ class CatalogViewModel extends ChangeNotifier {
     await loadCatalog();
   }
 
+  /// Стратегия cache-first: сначала отдаём кэш, параллельно идём в сеть.
   Future<void> loadCatalog() async {
-    _status = CatalogStatus.loading;
+    _isOffline = false;
+
+    // 1. Показываем кэш, если он есть.
+    final cached = await _repository.loadFromCache();
+    final hasCache = cached != null &&
+        (cached.products.isNotEmpty || cached.categories.isNotEmpty);
+    if (hasCache) {
+      debugPrint('[Каталог] показан КЭШ: ${cached.products.length} товаров');
+      _applyData(cached);
+      _status = CatalogStatus.success;
+    } else {
+      debugPrint('[Каталог] кэш пуст, ждём API');
+      _status = CatalogStatus.loading;
+    }
     _errorMessage = '';
     notifyListeners();
 
+    // 2. Запрашиваем свежие данные из API.
     try {
-      final data = await _repository.loadCatalog();
-      _products = data.products;
-      _categories = data.categories;
-      if (!tabs.any((t) => t.id == _selectedCategoryId)) {
-        _selectedCategoryId = _kNewId;
-      }
+      final fresh = await _repository.fetchFromApi();
+      debugPrint('[Каталог] получено с API: ${fresh.products.length} товаров');
+      _applyData(fresh);
       _status = CatalogStatus.success;
+      _isOffline = false;
     } catch (e) {
-      _errorMessage = 'Не удалось загрузить каталог';
-      _status = CatalogStatus.error;
+      debugPrint('[Каталог] ошибка сети: $e (есть кэш: $hasCache)');
+      if (hasCache) {
+        // Сеть недоступна, но есть кэш — показываем его без ошибки.
+        _isOffline = true;
+      } else {
+        // Кэш пуст и сети нет — состояние ошибки с возможностью повторить.
+        _errorMessage = 'Проверьте подключение к интернету и попробуйте снова';
+        _status = CatalogStatus.error;
+      }
     }
 
     notifyListeners();
+  }
+
+  void _applyData(CatalogData data) {
+    _products = data.products;
+    _categories = data.categories;
+    if (!tabs.any((t) => t.id == _selectedCategoryId)) {
+      _selectedCategoryId = _kNewId;
+    }
   }
 
   Future<void> selectCategory(String categoryId) async {

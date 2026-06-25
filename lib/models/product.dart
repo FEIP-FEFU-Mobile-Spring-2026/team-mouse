@@ -10,6 +10,11 @@ class ProductSize {
       name: json['name'] as String,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+      };
 }
 
 class Product {
@@ -62,4 +67,20 @@ class Product {
       countryOfOrigin: (json['countryOfOrigin'] as String?) ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'shortDescription': shortDescription,
+        'longDescription': longDescription,
+        'priceInKopecks': priceInKopecks,
+        'imageUrl': imageUrl,
+        'tags': tags,
+        'categoryId': categoryId,
+        'sizes': sizes.map((s) => s.toJson()).toList(),
+        'material': material,
+        'weight': weight,
+        'season': season,
+        'countryOfOrigin': countryOfOrigin,
+      };
 }

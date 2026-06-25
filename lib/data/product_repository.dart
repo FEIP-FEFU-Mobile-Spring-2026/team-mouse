@@ -1,23 +1,24 @@
-import 'dart:convert';
-import 'package:flutter/services.dart';
-import '../models/category.dart';
-import '../models/product.dart';
+import 'catalog_api.dart';
+import 'catalog_database.dart';
 
-typedef CatalogData = ({List<Category> categories, List<Product> products});
+export 'catalog_api.dart' show CatalogData;
 
+/// Координирует удалённый API и локальный кэш каталога.
 class ProductRepository {
-  Future<CatalogData> loadCatalog() async {
-    final jsonString = await rootBundle.loadString('products.json');
-    final json = jsonDecode(jsonString) as Map<String, dynamic>;
+  final CatalogApi _api;
+  final CatalogDatabase _database;
 
-    final categories = (json['categories'] as List)
-        .map((e) => Category.fromJson(e as Map<String, dynamic>))
-        .toList();
+  ProductRepository({CatalogApi? api, CatalogDatabase? database})
+      : _api = api ?? CatalogApi(),
+        _database = database ?? CatalogDatabase();
 
-    final products = (json['items'] as List)
-        .map((e) => Product.fromJson(e as Map<String, dynamic>))
-        .toList();
+  /// Возвращает закэшированный каталог или null, если кэш пуст.
+  Future<CatalogData?> loadFromCache() => _database.readCatalog();
 
-    return (categories: categories, products: products);
+  /// Загружает каталог из API и обновляет кэш.
+  Future<CatalogData> fetchFromApi() async {
+    final data = await _api.fetchCatalog();
+    await _database.saveCatalog(data);
+    return data;
   }
 }
