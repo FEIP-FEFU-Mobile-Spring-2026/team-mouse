@@ -1,56 +1,112 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../data/cart_database.dart';
+
+/// Позиция корзины в «сыром» виде: только то, что хранится в БД.
+@immutable
+class CartLine {
+  final String productId;
+  final String sizeId;
+  final int quantity;
+
+  const CartLine({
+    required this.productId,
+    required this.sizeId,
+    required this.quantity,
+  });
+
+  String get key => '$productId|$sizeId';
+
+  CartLine copyWith({int? quantity}) => CartLine(
+        productId: productId,
+        sizeId: sizeId,
+        quantity: quantity ?? this.quantity,
+      );
+}
 
 class CartViewModel extends ChangeNotifier {
-  final Map<String, int> _quantities = {};
+  final CartDatabase _database;
 
-  int getQuantity(String productId) => _quantities[productId] ?? 0;
+  CartViewModel({CartDatabase? database})
+      : _database = database ?? CartDatabase();
 
-  bool hasItem(String productId) => (_quantities[productId] ?? 0) > 0;
+  final Map<String, CartLine> _lines = {};
 
-  int get totalItems => _quantities.values.fold(0, (sum, q) => sum + q);
+  List<CartLine> get lines => List.unmodifiable(_lines.values);
 
-  Map<String, int> get quantities => Map.unmodifiable(_quantities);
+  bool get isEmpty => _lines.isEmpty;
 
-  Future<void> loadFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final ids = prefs.getStringList('cart_ids') ?? [];
-    for (final id in ids) {
-      final qty = prefs.getInt('cart_qty_$id') ?? 0;
-      if (qty > 0) _quantities[id] = qty;
+  /// Суммарное количество всех позиций — для бейджа.
+  int get totalItems =>
+      _lines.values.fold(0, (sum, line) => sum + line.quantity);
+
+  /// Количество конкретной позиции (товар + размер).
+  int quantityOf(String productId, String sizeId) =>
+      _lines['$productId|$sizeId']?.quantity ?? 0;
+
+  /// Суммарное количество товара по всем размерам — для карточки каталога.
+  int quantityOfProduct(String productId) => _lines.values
+      .where((line) => line.productId == productId)
+      .fold(0, (sum, line) => sum + line.quantity);
+
+  Future<void> loadFromDb() async {
+    final records = await _database.readAll();
+    _lines.clear();
+    for (final r in records) {
+      if (r.quantity <= 0) continue;
+      final line = CartLine(
+        productId: r.productId,
+        sizeId: r.sizeId,
+        quantity: r.quantity,
+      );
+      _lines[line.key] = line;
     }
     notifyListeners();
   }
 
-  void increment(String productId) {
-    _quantities[productId] = (_quantities[productId] ?? 0) + 1;
-    notifyListeners();
-    _persist();
+  /// Добавляет товар выбранного размера. Повторное добавление той же пары
+  /// (товар + размер) увеличивает количество, а не создаёт дубликат.
+  Future<void> add(String productId, String sizeId) async {
+    await _setQuantity(productId, sizeId,
+        quantityOf(productId, sizeId) + 1);
   }
 
-  void decrement(String productId) {
-    final current = _quantities[productId] ?? 0;
-    if (current <= 1) {
-      _quantities.remove(productId);
-    } else {
-      _quantities[productId] = current - 1;
+  Future<void> increment(String productId, String sizeId) =>
+      _setQuantity(productId, sizeId, quantityOf(productId, sizeId) + 1);
+
+  Future<void> decrement(String productId, String sizeId) =>
+      _setQuantity(productId, sizeId, quantityOf(productId, sizeId) - 1);
+
+  Future<void> remove(String productId, String sizeId) async {
+    final key = '$productId|$sizeId';
+    if (_lines.remove(key) != null) {
+      notifyListeners();
+      await _database.remove(productId, sizeId);
     }
-    notifyListeners();
-    _persist();
   }
 
-  Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    final ids = _quantities.keys.toList();
-    await prefs.setStringList('cart_ids', ids);
-    for (final id in ids) {
-      await prefs.setInt('cart_qty_$id', _quantities[id]!);
+  Future<void> clear() async {
+    if (_lines.isEmpty) return;
+    _lines.clear();
+    notifyListeners();
+    await _database.clear();
+  }
+
+  Future<void> _setQuantity(
+      String productId, String sizeId, int quantity) async {
+    final key = '$productId|$sizeId';
+    if (quantity <= 0) {
+      if (_lines.remove(key) != null) {
+        notifyListeners();
+        await _database.remove(productId, sizeId);
+      }
+      return;
     }
-    final staleKeys = prefs
-        .getKeys()
-        .where((k) => k.startsWith('cart_qty_') && !ids.contains(k.substring(9)));
-    for (final key in staleKeys) {
-      await prefs.remove(key);
-    }
+    _lines[key] = CartLine(
+      productId: productId,
+      sizeId: sizeId,
+      quantity: quantity,
+    );
+    notifyListeners();
+    await _database.upsert(productId, sizeId, quantity);
   }
 }

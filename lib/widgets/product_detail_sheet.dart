@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../utils/price_formatter.dart';
+import '../viewmodel/cart_viewmodel.dart';
 
 void showProductDetailSheet(BuildContext context, Product product) {
   showModalBottomSheet(
@@ -27,7 +29,6 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
   Widget build(BuildContext context) {
     final product = widget.product;
     final primary = Theme.of(context).colorScheme.primary;
-    final screenHeight = MediaQuery.of(context).size.height;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.88,
@@ -114,7 +115,11 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                   ],
                 ),
               ),
-              _AddToCartButton(primary: primary),
+              _AddToCartButton(
+                product: product,
+                selectedSizeId: _selectedSizeId,
+                primary: primary,
+              ),
             ],
           ),
         );
@@ -215,7 +220,7 @@ class _TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.55),
+        color: Colors.black.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -367,12 +372,22 @@ class _SizeSelector extends StatelessWidget {
 }
 
 class _AddToCartButton extends StatelessWidget {
+  final Product product;
+  final String? selectedSizeId;
   final Color primary;
 
-  const _AddToCartButton({required this.primary});
+  const _AddToCartButton({
+    required this.product,
+    required this.selectedSizeId,
+    required this.primary,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Если у товара есть размеры — кнопка активна только после выбора размера.
+    final needsSize = product.sizes.isNotEmpty;
+    final canAdd = !needsSize || selectedSizeId != null;
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -384,7 +399,7 @@ class _AddToCartButton extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -394,18 +409,34 @@ class _AddToCartButton extends StatelessWidget {
         width: double.infinity,
         height: 52,
         child: FilledButton(
-          onPressed: () {},
+          onPressed: canAdd ? () => _addToCart(context) : null,
           style: FilledButton.styleFrom(
             backgroundColor: primary,
+            disabledBackgroundColor: primary.withValues(alpha: 0.4),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          child: const Text(
-            'В корзину',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          child: Text(
+            needsSize && selectedSizeId == null
+                ? 'Выберите размер'
+                : 'В корзину · ${formatPrice(product.priceInKopecks)}',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
         ),
+      ),
+    );
+  }
+
+  void _addToCart(BuildContext context) {
+    // Для товара без размеров используем пустой идентификатор размера.
+    final sizeId = selectedSizeId ?? '';
+    context.read<CartViewModel>().add(product.id, sizeId);
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('«${product.name}» добавлен в корзину'),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
